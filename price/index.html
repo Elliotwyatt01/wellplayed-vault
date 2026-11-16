@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Well Played - Card Price Tool</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#14213d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="WP Prices">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root{--bg:#f6f4ef;--card:#fff;--ink:#1d1d1f;--mute:#6b6b70;--line:#e2ded5;--acc:#1f5fbf;--buy:#1b7f3b;--sell:#b3261e;--chip:#eef2fa}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:16px}
+  header{background:#14213d;color:#fff;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  header h1{font-size:19px;margin:0;font-weight:700;letter-spacing:.2px}
+  header .sub{opacity:.75;font-size:13px}
+  nav{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+  nav button{background:#2b3a5e;color:#fff;border:0;border-radius:8px;padding:9px 14px;font-size:15px;cursor:pointer}
+  nav button.on{background:#fca311;color:#14213d;font-weight:700}
+  nav .badge{background:#b3261e;color:#fff;border-radius:10px;padding:1px 7px;font-size:12px;margin-left:4px}
+  main{max-width:1100px;margin:0 auto;padding:14px}
+  .panel{display:none}.panel.on{display:block}
+  .box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+  .searchrow{display:flex;gap:8px;flex-wrap:wrap}
+  .searchrow input{flex:1;min-width:220px;font-size:20px;padding:12px 14px;border:2px solid var(--acc);border-radius:10px}
+  button.big{font-size:18px;padding:12px 18px;border-radius:10px;border:0;background:var(--acc);color:#fff;cursor:pointer;font-weight:600}
+  button.small{font-size:14px;padding:7px 11px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer}
+  button.add{background:#14213d;color:#fff;border:0}
+  button.buyb{background:var(--buy);color:#fff;border:0}
+  button.danger{color:var(--sell)}
+  .hint{color:var(--mute);font-size:13px;margin-top:8px}
+  .pct{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px}
+  .pct button{font-size:15px;padding:7px 12px;border-radius:20px;border:1px solid var(--line);background:#fff;cursor:pointer}
+  .pct button.on{background:var(--buy);color:#fff;border-color:var(--buy)}
+  .res{display:grid;grid-template-columns:76px 1fr;gap:12px;border-top:1px solid var(--line);padding:12px 0}
+  .res:first-child{border-top:0}
+  .thumb{width:76px;height:106px;border-radius:6px;background:#e9e6df;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--mute);overflow:hidden;cursor:pointer;text-align:center}
+  .thumb img{width:100%;height:100%;object-fit:cover}
+  .nm{font-weight:700;font-size:17px}
+  .meta{color:var(--mute);font-size:13px;margin:2px 0 8px}
+  .chip{display:inline-block;background:var(--chip);border-radius:6px;padding:1px 7px;font-size:12px;margin-right:4px}
+  table.v{border-collapse:collapse;width:100%;font-size:15px}
+  table.v th{text-align:left;font-size:12px;color:var(--mute);font-weight:600;padding:4px 6px;border-bottom:1px solid var(--line)}
+  table.v td{padding:6px;border-bottom:1px solid #f0ede6;vertical-align:middle}
+  .mk{font-weight:600}
+  .sellp{color:var(--sell);font-weight:800;font-size:18px}
+  .buyp{color:var(--buy);font-weight:800;font-size:18px}
+  .na{color:var(--mute)}
+  .status{padding:10px 12px;border-radius:8px;margin:8px 0;font-size:14px}
+  .status.err{background:#fde8e6;color:#8a1c14}.status.ok{background:#e6f4ea;color:#14532d}.status.info{background:#eef2fa;color:#1f3b73}
+  table.q{border-collapse:collapse;width:100%}
+  table.q th{text-align:left;font-size:12px;color:var(--mute);padding:6px;border-bottom:1px solid var(--line)}
+  table.q td{padding:6px;border-bottom:1px solid #f0ede6}
+  table.q input{width:80px;font-size:15px;padding:5px;border:1px solid var(--line);border-radius:6px}
+  table.q input.qty{width:56px}
+  .totals{display:flex;gap:18px;flex-wrap:wrap;font-size:18px;margin:10px 0}
+  .totals b{font-size:24px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  label.f{display:block;font-size:13px;color:var(--mute);margin:10px 0 4px}
+  input.t{font-size:16px;padding:9px;border:1px solid var(--line);border-radius:8px;width:100%;max-width:520px}
+  .scanbtn{width:100%;font-size:22px;padding:16px;border-radius:12px;border:0;background:#fca311;color:#14213d;font-weight:800;cursor:pointer;margin-bottom:10px}
+  #scanBox{display:none;margin-top:10px}
+  #scanBox img{max-width:100%;max-height:260px;border-radius:8px;display:block;margin:0 auto 8px}
+  .bar{height:8px;background:#e9e6df;border-radius:4px;overflow:hidden}.bar div{height:100%;width:0;background:#1f5fbf;transition:width .2s}
+  .read{font-size:13px;color:var(--mute);margin-top:6px}
+  .install{background:#fff7e6;border:1px solid #fca311;border-radius:10px;padding:10px 12px;font-size:14px;margin-bottom:12px;display:none}
+  @media (max-width:640px){
+    header{padding:10px 10px calc(8px) 10px;padding-top:max(10px,env(safe-area-inset-top))}
+    header h1{font-size:17px} header .sub{display:none}
+    nav{margin-left:0;width:100%;display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+    nav button{padding:9px 2px;font-size:13px}
+    main{padding:8px}
+    .res{grid-template-columns:60px 1fr;gap:8px}.thumb{width:60px;height:84px}
+    table.v thead{display:none}
+    table.v, table.v tbody{display:block;width:100%}
+    table.v tr{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px 6px;padding:8px 0;border-bottom:1px solid #f0ede6}
+    table.v td{border:0;padding:0}
+    table.v td:nth-child(1){grid-column:1/4;font-weight:600}
+    table.v td:nth-child(2)::before{content:"Market";display:block;font-size:11px;color:var(--mute);font-weight:400}
+    table.v td:nth-child(3)::before{content:"Sell";display:block;font-size:11px;color:var(--mute);font-weight:400}
+    table.v td:nth-child(4)::before{content:"Buy";display:block;font-size:11px;color:var(--mute);font-weight:400}
+    table.v td:last-child{grid-column:1/4;display:flex;gap:6px;white-space:normal !important;margin-top:4px}
+    table.v td:last-child button{flex:1;padding:10px;font-size:15px}
+    .sellp,.buyp{font-size:16px}
+    .searchrow input{font-size:18px}
+  }
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:9}
+  .modal img{max-height:90vh;max-width:92vw;border-radius:12px}
+  /* ---------- Avery 5167 print sheet ---------- */
+  #sheet{display:none}
+  @media print{
+    @page{size:letter;margin:0}
+    body{background:#fff}
+    header,main,.modal{display:none !important}
+    #sheet{display:block}
+    .page{width:8.5in;height:11in;position:relative;page-break-after:always;overflow:hidden}
+    .lbl{position:absolute;width:1.75in;height:.5in;padding:.03in .07in;overflow:hidden;font-family:Arial,Helvetica,sans-serif;display:flex;flex-direction:column;justify-content:center}
+    .lbl .l1{font-size:6.6pt;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1}
+    .lbl .l2{font-size:5.6pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;color:#333}
+    .lbl .l3{display:flex;justify-content:space-between;align-items:baseline;line-height:1}
+    .lbl .pr{font-size:12.5pt;font-weight:800}
+    .lbl .shop{font-size:5pt;color:#444}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Well Played · Card Price Tool</h1>
+    <div class="sub">Look up today's market price · sell &amp; buy prices · print price stickers</div>
+  </div>
+  <nav>
+    <button data-tab="look" class="on">🔍 Look up</button>
+    <button data-tab="buy">🤝 Buying <span class="badge" id="bBuy">0</span></button>
+    <button data-tab="labels">🏷️ Stickers <span class="badge" id="bLab">0</span></button>
+    <button data-tab="set">⚙️ Setup</button>
+  </nav>
+</header>
+
+<main>
+  <!-- LOOK UP -->
+  <section class="panel on" id="p-look">
+    <div class="install" id="installTip"></div>
+    <div class="box">
+      <button class="scanbtn" id="scanBtn">📷 Scan a card</button>
+      <input type="file" id="camIn" accept="image/*" capture="environment" style="display:none">
+      <div id="scanBox">
+        <img id="scanImg" alt="">
+        <div class="bar"><div id="scanBar"></div></div>
+        <div class="read" id="scanRead"></div>
+      </div>
+      <div class="searchrow" style="margin-top:6px">
+        <input id="q" placeholder="Type a card: charizard ex · pikachu 025 · 148/165" autocomplete="off" autofocus>
+        <button class="big" id="go">Look up</button>
+      </div>
+      <div class="pct" id="pctRow"><span style="font-size:14px;color:var(--mute)">Buy offer at:</span></div>
+      <div class="hint">Scan tip: lay the card flat, fill the screen with it, and tilt to kill glare on holos. Or type it: add the number for an exact match (example: <b>umbreon 161</b>).</div>
+      <div id="msg"></div>
+    </div>
+    <div class="box" id="results" style="display:none"></div>
+  </section>
+
+  <!-- BUYING -->
+  <section class="panel" id="p-buy">
+    <div class="box">
+      <h2 style="margin:0 0 4px">Buying a collection</h2>
+      <div class="hint" style="margin-top:0">Add the cards someone wants to sell you. The tool totals what they're worth and what to offer.</div>
+      <div class="totals">
+        <div>Market value: <b id="tMk">$0.00</b></div>
+        <div style="color:var(--buy)">Your offer: <b id="tOf">$0.00</b></div>
+        <div style="color:var(--mute)">Cards: <b id="tCt">0</b></div>
+      </div>
+      <table class="q"><thead><tr><th>Card</th><th>Qty</th><th>Market ea</th><th>Offer ea</th><th>Offer total</th><th></th></tr></thead><tbody id="buyBody"></tbody></table>
+      <div class="row" style="margin-top:12px">
+        <button class="small" id="buyToLabels">🏷️ Make stickers for all of these</button>
+        <button class="small" id="buyCsv">⬇️ Save list (CSV for SortSwift)</button>
+        <button class="small danger" id="buyClear">Clear list</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- LABELS -->
+  <section class="panel" id="p-labels">
+    <div class="box">
+      <h2 style="margin:0 0 4px">Price stickers · Avery 5167</h2>
+      <div class="hint" style="margin-top:0">80 small labels per sheet (1¾" × ½"). Change any price before printing. If part of a sheet is used, set the first label to start on.</div>
+      <table class="q" style="margin-top:10px"><thead><tr><th>Card</th><th>How many</th><th>Price</th><th></th></tr></thead><tbody id="labBody"></tbody></table>
+      <div class="row" style="margin-top:12px">
+        <label>Start on label # <input id="startAt" type="number" min="1" max="80" value="1" style="width:64px;font-size:15px;padding:5px"></label>
+        <label><input type="checkbox" id="showShop" checked> Print "Well Played" on stickers</label>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="big" id="printBtn">🖨️ Print stickers</button>
+        <button class="small" id="labCsv">⬇️ Save list (CSV for SortSwift)</button>
+        <button class="small danger" id="labClear">Clear stickers</button>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="small" id="labCopy">📋 Copy sticker list (to send to the shop PC)</button>
+        <button class="small" id="labPaste">📥 Paste a sticker list</button>
+      </div>
+      <textarea id="labTxt" style="display:none;width:100%;height:90px;margin-top:8px;font-size:13px" placeholder="Paste the copied list here, then tap Add these"></textarea>
+      <button class="small add" id="labPasteGo" style="display:none;margin-top:6px">Add these</button>
+      <div class="hint" id="labInfo"></div>
+      <div class="status info" style="margin-top:12px">Printer settings: <b>Scale 100% / Actual size</b> (not "Fit to page"), margins <b>None</b>, and turn <b>headers and footers off</b>. Print one test on plain paper first and hold it up to a label sheet.</div>
+    </div>
+  </section>
+
+  <!-- SETUP -->
+  <section class="panel" id="p-set">
+    <div class="box">
+      <h2 style="margin:0 0 4px">Setup</h2>
+      <label class="f">PokéWallet API key (starts with pk_live_). It's saved on this computer only.</label>
+      <input class="t" id="key" type="password" placeholder="pk_live_...">
+      <div class="row" style="margin-top:8px"><button class="small add" id="saveKey">Save key</button><button class="small" id="testKey">Test it</button><button class="small" id="showKey">Show/Hide</button></div>
+      <div id="keyMsg"></div>
+
+      <label class="f">Sell price rule</label>
+      <div class="hint" style="margin-top:0">Market price, rounded <b>up</b>: under $5 → next 25¢ · $5 and up → next whole dollar · never under the floor.</div>
+      <div class="row" style="margin-top:6px">
+        <label>Floor $ <input id="floor" type="number" step="0.05" value="0.25" style="width:80px;font-size:15px;padding:5px"></label>
+        <label>Markup over market % <input id="markup" type="number" step="1" value="0" style="width:70px;font-size:15px;padding:5px"></label>
+      </div>
+
+      <label class="f">Buy offer choices (% of market)</label>
+      <input class="t" id="pcts" value="50,60,70,80" style="max-width:200px">
+
+      <label class="f">Saved lookups (so the same card doesn't use up your free requests)</label>
+      <div class="row"><span id="cacheInfo" class="hint" style="margin:0"></span><button class="small danger" id="clearCache">Clear saved lookups</button></div>
+      <div class="hint">Free plan = 100 lookups per hour, 1,000 per day. Each search = 1, each picture = 1. Cards you already looked up today come from memory and don't count.</div>
+      <div class="row" style="margin-top:10px"><button class="small" id="saveSettings">Save settings</button></div>
+    </div>
+  </section>
+</main>
+
+<div class="modal" id="modal"><img id="modalImg" alt=""></div>
+<div id="sheet"></div>
+
+<script>
+const API = 'https://api.pokewallet.io';
+const LS = k => 'wpPrice.' + k;
+function load(k, d){ try{ const v = localStorage.getItem(LS(k)); return v == null ? d : JSON.parse(v); }catch(e){ return d; } }
+function save(k, v){ try{ localStorage.setItem(LS(k), JSON.stringify(v)); }catch(e){} }
+
+let S = load('settings', {floor:0.25, markup:0, pcts:[50,60,70,80], buyPct:60});
+let KEY = load('key', '');
+let BUY = load('buy', []);
+let LAB = load('labels', []);
+let CACHE = load('cache', {});
+let LAST = [];
+const $ = id => document.getElementById(id);
+const money = n => (n == null || isNaN(n)) ? '—' : '$' + Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- pricing ---------- */
+function sellPrice(mkt){
+  if (mkt == null || isNaN(mkt)) return null;
+  let p = mkt * (1 + (Number(S.markup)||0)/100);
+  p = p < 5 ? Math.ceil(p * 4 - 1e-9) / 4 : Math.ceil(p - 1e-9);
+  return Math.max(p, Number(S.floor)||0);
+}
+function buyPrice(mkt, pct){ if (mkt == null || isNaN(mkt)) return null; return Math.floor(mkt * (pct ?? S.buyPct) / 100 * 4) / 4; }
+
+/* ---------- tabs ---------- */
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('on', p.id === 'p-' + b.dataset.tab));
+  if (b.dataset.tab === 'buy') drawBuy();
+  if (b.dataset.tab === 'labels') drawLab();
+  if (b.dataset.tab === 'set') drawSet();
+});
+
+/* ---------- buy % chips ---------- */
+function drawPct(){
+  const row = $('pctRow'); row.querySelectorAll('button').forEach(b => b.remove());
+  S.pcts.forEach(p => { const b = document.createElement('button'); b.textContent = p + '%'; if (p == S.buyPct) b.className = 'on';
+    b.onclick = () => { S.buyPct = p; save('settings', S); drawPct(); drawResults(); }; row.appendChild(b); });
+}
+
+/* ---------- API ---------- */
+async function api(path){
+  if (!KEY) throw new Error('NOKEY');
+  const r = await fetch(API + path, {headers: {'X-API-Key': KEY}});
+  if (r.status === 429) throw new Error('LIMIT');
+  if (r.status === 401) throw new Error('BADKEY');
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r;
+}
+function showMsg(t, cls){ $('msg').innerHTML = t ? `<div class="status ${cls||'info'}">${t}</div>` : ''; }
+function errText(e){
+  const m = String(e.message || e);
+  if (m === 'NOKEY') return 'No API key yet. Go to ⚙️ Setup and paste your PokéWallet key.';
+  if (m === 'BADKEY') return 'PokéWallet says the API key is wrong or turned off. Check it in ⚙️ Setup.';
+  if (m === 'LIMIT') return 'You hit the free limit (100 lookups an hour). Wait a bit, or use cards you already looked up. Upgrade options are on the PokéWallet dashboard.';
+  if (m.includes('Failed to fetch') || m.includes('NetworkError')) return 'Couldn\'t reach PokéWallet. Check the internet connection (phone hotspot at the show). Cards you already looked up still work.';
+  return 'Something went wrong: ' + esc(m);
+}
+
+async function search(){
+  const q = $('q').value.trim(); if (!q) return;
+  const ck = q.toLowerCase(), day = new Date().toISOString().slice(0,10);
+  if (CACHE[ck] && CACHE[ck].d === day){ LAST = CACHE[ck].r; showMsg(`Saved lookup from earlier today · ${LAST.length} found`, 'ok'); drawResults(); return; }
+  showMsg('Looking up…');
+  try{
+    const r = await api('/search?q=' + encodeURIComponent(q) + '&limit=40');
+    const j = await r.json();
+    LAST = (j.results || []).map(slim);
+    CACHE[ck] = {d: day, r: LAST}; trimCache(); save('cache', CACHE);
+    const left = r.headers.get('X-RateLimit-Remaining-Hour');
+    showMsg(`${LAST.length} found` + (left ? ` · ${left} lookups left this hour` : ''), LAST.length ? 'ok' : 'info');
+  }catch(e){
+    // offline fallback: any older saved lookup for this text
+    if (CACHE[ck]){ LAST = CACHE[ck].r; showMsg(errText(e) + `<br>Showing the saved prices from ${CACHE[ck].d}.`, 'err'); }
+    else { LAST = []; showMsg(errText(e), 'err'); }
+  }
+  drawResults();
+}
+function trimCache(){ const ks = Object.keys(CACHE); if (ks.length > 400) ks.slice(0, ks.length - 400).forEach(k => delete CACHE[k]); }
+
+function slim(x){
+  const ci = x.card_info || {};
+  const vars = [];
+  (x.tcgplayer?.prices || []).forEach(p => vars.push({v: p.sub_type_name || 'Normal', mkt: p.market_price ?? p.mid_price ?? null, low: p.low_price, src: 'TCGplayer'}));
+  if (!vars.length && x.cardmarket?.prices){
+    x.cardmarket.prices.forEach(p => vars.push({v: (p.variant_type||'normal') + ' (EU)', mkt: p.trend ?? p.avg ?? null, low: p.low, src: 'CardMarket €', eur: true}));
+  }
+  return {id: x.id, name: ci.name || x.cardmarket?.product_name || '?', set: ci.set_name || '', code: ci.set_code || '', num: ci.card_number || '',
+          rar: ci.rarity || '', type: ci.product_type || 'card', vars, url: x.tcgplayer?.url || x.cardmarket?.product_url || ''};
+}
+
+function drawResults(){
+  const box = $('results');
+  if (!LAST.length){ box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  box.innerHTML = LAST.map((c, i) => `
+    <div class="res">
+      <div class="thumb" data-i="${i}" title="Load picture (uses 1 lookup)">Tap for<br>picture</div>
+      <div>
+        <div class="nm">${esc(c.name)}</div>
+        <div class="meta">${esc(c.set)} ${c.num ? '· #' + esc(c.num) : ''} ${c.rar ? '<span class="chip">' + esc(c.rar) + '</span>' : ''}${c.type === 'sealed' ? '<span class="chip">Sealed</span>' : ''}</div>
+        ${c.vars.length ? `<table class="v"><thead><tr><th>Version</th><th>Market</th><th>Sell at</th><th>Buy at ${S.buyPct}%</th><th></th></tr></thead><tbody>
+          ${c.vars.map((v, j) => `<tr>
+            <td>${esc(v.v)}${v.eur ? ' <span class="chip">€ prices</span>' : ''}</td>
+            <td class="mk">${v.mkt == null ? '<span class="na">no price</span>' : (v.eur ? '€' + Number(v.mkt).toFixed(2) : money(v.mkt))}</td>
+            <td class="sellp">${money(sellPrice(v.mkt))}</td>
+            <td class="buyp">${money(buyPrice(v.mkt))}</td>
+            <td style="white-space:nowrap"><button class="small add" data-lab="${i}:${j}">+ Sticker</button> <button class="small buyb" data-buy="${i}:${j}">+ Buying</button></td>
+          </tr>`).join('')}</tbody></table>` : '<div class="na">No price listed for this one.</div>'}
+      </div>
+    </div>`).join('');
+  box.querySelectorAll('[data-lab]').forEach(b => b.onclick = () => { const [i,j] = b.dataset.lab.split(':').map(Number); addLabel(LAST[i], LAST[i].vars[j]); b.textContent = '✓ Added'; });
+  box.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => { const [i,j] = b.dataset.buy.split(':').map(Number); addBuy(LAST[i], LAST[i].vars[j]); b.textContent = '✓ Added'; });
+  box.querySelectorAll('.thumb').forEach(t => t.onclick = () => loadImg(t, LAST[t.dataset.i]));
+}
+
+async function loadImg(el, c){
+  if (el.dataset.src){ $('modalImg').src = el.dataset.src; $('modal').style.display = 'flex'; return; }
+  el.textContent = '…';
+  try{ const r = await api('/images/' + encodeURIComponent(c.id) + '?size=low'); const b = await r.blob(); const u = URL.createObjectURL(b);
+       el.dataset.src = u; el.innerHTML = `<img src="${u}" alt="">`; }
+  catch(e){ el.textContent = 'No picture'; }
+}
+$('modal').onclick = () => $('modal').style.display = 'none';
+
+/* ---------- labels ---------- */
+function shortVar(v){ return /reverse/i.test(v) ? 'Rev Holo' : /^holofoil$/i.test(v) ? 'Holo' : /normal/i.test(v) ? '' : v; }
+function addLabel(c, v){
+  LAB.push({name: c.name.replace(/\s*-\s*\d+\/\d+.*$/, ''), sub: [c.set, c.num ? '#' + c.num : '', shortVar(v.v)].filter(Boolean).join(' · '),
+            price: sellPrice(v.mkt) ?? 0, qty: 1, mkt: v.mkt, id: c.id});
+  save('labels', LAB); badges();
+}
+function drawLab(){
+  $('labBody').innerHTML = LAB.length ? LAB.map((l, i) => `<tr>
+    <td><b>${esc(l.name)}</b><br><span class="hint" style="margin:0">${esc(l.sub)}${l.mkt != null ? ' · market ' + money(l.mkt) : ''}</span></td>
+    <td><input class="qty" type="number" min="1" value="${l.qty}" data-i="${i}" data-f="qty"></td>
+    <td>$<input type="number" step="0.25" value="${Number(l.price).toFixed(2)}" data-i="${i}" data-f="price"></td>
+    <td><button class="small danger" data-del="${i}">✕</button></td></tr>`).join('')
+    : '<tr><td colspan="4" class="na" style="padding:14px">No stickers yet. Look up a card and tap <b>+ Sticker</b>.</td></tr>';
+  $('labBody').querySelectorAll('input').forEach(inp => inp.onchange = () => { const l = LAB[inp.dataset.i]; l[inp.dataset.f] = inp.dataset.f === 'qty' ? Math.max(1, parseInt(inp.value)||1) : (parseFloat(inp.value)||0); save('labels', LAB); labInfo(); });
+  $('labBody').querySelectorAll('[data-del]').forEach(b => b.onclick = () => { LAB.splice(b.dataset.del, 1); save('labels', LAB); drawLab(); badges(); });
+  labInfo();
+}
+function labInfo(){ const n = LAB.reduce((a, l) => a + l.qty, 0), st = parseInt($('startAt').value)||1; const sheets = Math.ceil((n + st - 1) / 80) || 0;
+  $('labInfo').textContent = n ? `${n} stickers · ${sheets} sheet${sheets === 1 ? '' : 's'}` : ''; }
+$('startAt').onchange = labInfo;
+
+function buildSheet(){
+  // Avery 5167: 4 cols x 20 rows; top .5in; left .3in; col pitch 2.05in; row pitch .5in
+  const all = []; LAB.forEach(l => { for (let k = 0; k < l.qty; k++) all.push(l); });
+  const start = Math.min(80, Math.max(1, parseInt($('startAt').value)||1)) - 1;
+  const shop = $('showShop').checked;
+  let html = '', slot = start, page = '';
+  const flush = () => { html += `<div class="page">${page}</div>`; page = ''; };
+  all.forEach(l => {
+    if (slot >= 80){ flush(); slot = 0; }
+    const col = slot % 4, row = Math.floor(slot / 4);
+    page += `<div class="lbl" style="left:${0.3 + col * 2.05}in;top:${0.5 + row * 0.5}in">
+      <div class="l1">${esc(l.name)}</div><div class="l2">${esc(l.sub)}</div>
+      <div class="l3"><span class="pr">${money(l.price)}</span>${shop ? '<span class="shop">Well Played</span>' : ''}</div></div>`;
+    slot++;
+  });
+  if (page) flush();
+  $('sheet').innerHTML = html;
+}
+$('printBtn').onclick = () => { if (!LAB.length) return alertBox('Add some stickers first.'); buildSheet(); window.print(); };
+$('labClear').onclick = () => { if (confirmBox('Clear all stickers?')){ LAB = []; save('labels', LAB); drawLab(); badges(); } };
+$('labCsv').onclick = () => csv('stickers', [['Card','Set / #','Qty','Price','Market']].concat(LAB.map(l => [l.name, l.sub, l.qty, l.price, l.mkt ?? ''])));
+
+/* ---------- buying ---------- */
+function addBuy(c, v){
+  const ex = BUY.find(b => b.id === c.id && b.v === v.v);
+  if (ex) ex.qty++; else BUY.push({id: c.id, name: c.name, sub: [c.set, c.num ? '#' + c.num : '', shortVar(v.v)].filter(Boolean).join(' · '), v: v.v, mkt: v.mkt ?? 0, qty: 1, pct: S.buyPct, offer: null});
+  save('buy', BUY); badges();
+}
+function offerEa(b){ return b.offer != null ? b.offer : buyPrice(b.mkt, b.pct); }
+function drawBuy(){
+  $('buyBody').innerHTML = BUY.length ? BUY.map((b, i) => `<tr>
+    <td><b>${esc(b.name)}</b><br><span class="hint" style="margin:0">${esc(b.sub)}</span></td>
+    <td><input class="qty" type="number" min="1" value="${b.qty}" data-i="${i}" data-f="qty"></td>
+    <td>${money(b.mkt)}</td>
+    <td>$<input type="number" step="0.25" value="${Number(offerEa(b)).toFixed(2)}" data-i="${i}" data-f="offer"></td>
+    <td class="buyp">${money(offerEa(b) * b.qty)}</td>
+    <td><button class="small danger" data-del="${i}">✕</button></td></tr>`).join('')
+    : '<tr><td colspan="6" class="na" style="padding:14px">Nothing yet. Look up a card and tap <b>+ Buying</b>.</td></tr>';
+  $('buyBody').querySelectorAll('input').forEach(inp => inp.onchange = () => { const b = BUY[inp.dataset.i];
+    if (inp.dataset.f === 'qty') b.qty = Math.max(1, parseInt(inp.value)||1); else b.offer = parseFloat(inp.value)||0; save('buy', BUY); drawBuy(); });
+  $('buyBody').querySelectorAll('[data-del]').forEach(x => x.onclick = () => { BUY.splice(x.dataset.del, 1); save('buy', BUY); drawBuy(); badges(); });
+  const mk = BUY.reduce((a, b) => a + b.mkt * b.qty, 0), of = BUY.reduce((a, b) => a + offerEa(b) * b.qty, 0), ct = BUY.reduce((a, b) => a + b.qty, 0);
+  $('tMk').textContent = money(mk); $('tOf').textContent = money(of); $('tCt').textContent = ct;
+}
+$('buyClear').onclick = () => { if (confirmBox('Clear the buying list?')){ BUY = []; save('buy', BUY); drawBuy(); badges(); } };
+$('buyToLabels').onclick = () => { BUY.forEach(b => LAB.push({name: b.name.replace(/\s*-\s*\d+\/\d+.*$/, ''), sub: b.sub, price: sellPrice(b.mkt) ?? 0, qty: b.qty, mkt: b.mkt, id: b.id}));
+  save('labels', LAB); badges(); alertBox('Added ' + BUY.length + ' cards to Stickers.'); };
+$('buyCsv').onclick = () => csv('buying', [['Card','Set / #','Qty','Market ea','Offer ea','Offer total','Sell price']].concat(BUY.map(b => [b.name, b.sub, b.qty, b.mkt, offerEa(b), (offerEa(b)*b.qty).toFixed(2), sellPrice(b.mkt)])));
+
+/* ---------- setup ---------- */
+function drawSet(){
+  $('key').value = KEY; $('floor').value = S.floor; $('markup').value = S.markup; $('pcts').value = S.pcts.join(',');
+  $('cacheInfo').textContent = Object.keys(CACHE).length + ' saved lookups';
+}
+$('saveKey').onclick = () => { KEY = $('key').value.trim(); save('key', KEY); $('keyMsg').innerHTML = '<div class="status ok">Key saved on this computer.</div>'; };
+$('showKey').onclick = () => { $('key').type = $('key').type === 'password' ? 'text' : 'password'; };
+$('testKey').onclick = async () => { KEY = $('key').value.trim(); save('key', KEY);
+  try{ const r = await api('/sets'); await r.json(); $('keyMsg').innerHTML = '<div class="status ok">✓ Key works. You\'re ready to look up cards.</div>'; }
+  catch(e){ $('keyMsg').innerHTML = `<div class="status err">${errText(e)}</div>`; } };
+$('saveSettings').onclick = () => { S.floor = parseFloat($('floor').value)||0; S.markup = parseFloat($('markup').value)||0;
+  S.pcts = $('pcts').value.split(',').map(x => parseInt(x)).filter(x => x > 0 && x <= 100); if (!S.pcts.includes(S.buyPct)) S.buyPct = S.pcts[0] || 60;
+  save('settings', S); drawPct(); alertBox('Settings saved.'); };
+$('clearCache').onclick = () => { CACHE = {}; save('cache', CACHE); drawSet(); };
+
+/* ---------- helpers ---------- */
+function csv(name, rows){ const t = rows.map(r => r.map(x => '"' + String(x ?? '').replace(/"/g, '""') + '"').join(',')).join('\r\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([t], {type: 'text/csv'})); a.download = `Well Played ${name} ${new Date().toISOString().slice(0,10)}.csv`; a.click(); }
+function alertBox(t){ showMsg(t, 'ok'); }
+function confirmBox(t){ return window.confirm ? confirm(t) : true; }
+function badges(){ $('bBuy').textContent = BUY.reduce((a, b) => a + b.qty, 0); $('bLab').textContent = LAB.reduce((a, l) => a + l.qty, 0); }
+
+/* ---------- scan (photo -> text -> search) ---------- */
+let OCR = null;
+function loadScript(src){ return new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = src; sc.onload = ok; sc.onerror = no; document.head.appendChild(sc); }); }
+async function getOCR(){
+  if (OCR) return OCR;
+  if (!window.Tesseract) await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
+  OCR = await Tesseract.createWorker('eng', 1, {logger: m => { if (m.status === 'recognizing text') $('scanBar').style.width = Math.round(m.progress * 100) + '%'; }});
+  return OCR;
+}
+function prep(img, x0, y0, x1, y1, scale){
+  const w = img.naturalWidth, h = img.naturalHeight;
+  const sx = x0 * w, sy = y0 * h, sw = (x1 - x0) * w, sh = (y1 - y0) * h;
+  const k = Math.min(scale, 2400 / sw);
+  const c = document.createElement('canvas'); c.width = Math.round(sw * k); c.height = Math.round(sh * k);
+  const g = c.getContext('2d'); g.drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+  const d = g.getImageData(0, 0, c.width, c.height), a = d.data;
+  for (let i = 0; i < a.length; i += 4){ let v = 0.3*a[i] + 0.59*a[i+1] + 0.11*a[i+2]; v = (v - 128) * 1.6 + 128; v = v < 0 ? 0 : v > 255 ? 255 : v; a[i] = a[i+1] = a[i+2] = v; }
+  g.putImageData(d, 0, 0); return c;
+}
+const SKIP = /^(basic|stage|stage ?[12]|hp|trainer|item|supporter|stadium|energy|pok[eé]mon|tool|evolves|ability|weakness|resistance|retreat|illus|ex|v|vmax|vstar|gx)$/i;
+function guessName(text){
+  const lines = text.split('\n').map(l => l.replace(/[^A-Za-z'’é\- ]/g, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean);
+  for (const l of lines.slice(0, 8)){
+    const words = l.split(' ').filter(w => w.length >= 3 && !SKIP.test(w));
+    if (words.length){ let n = words.slice(0, 2).join(' '); if (/\b(ex|EX|GX|V|VMAX|VSTAR)\b/.test(l)) n += ' ' + (l.match(/\b(ex|EX|GX|VMAX|VSTAR|V)\b/)[1]).toLowerCase(); return n; }
+  }
+  return '';
+}
+function guessNum(text){
+  const m = text.replace(/[oO]/g, '0').replace(/[lI|]/g, '1').match(/(\d{1,3})\s*[\/]\s*(\d{2,3})/);
+  return m ? {left: String(parseInt(m[1])), full: m[1] + '/' + m[2]} : null;
+}
+$('scanBtn').onclick = () => $('camIn').click();
+$('camIn').onchange = async () => {
+  const f = $('camIn').files[0]; if (!f) return;
+  const url = URL.createObjectURL(f); const img = $('scanImg'); img.src = url;
+  $('scanBox').style.display = 'block'; $('scanBar').style.width = '0'; $('scanRead').textContent = 'Getting the reader ready… (first time takes a few seconds)';
+  try{
+    await img.decode();
+    const w = await getOCR();
+    $('scanRead').textContent = 'Reading the card…';
+    const top = await w.recognize(prep(img, 0, 0, 1, 0.22, 2));
+    $('scanBar').style.width = '0';
+    const bot = await w.recognize(prep(img, 0, 0.82, 1, 1, 3));
+    let num = guessNum(bot.data.text) || guessNum(top.data.text);
+    if (!num){ const all = await w.recognize(prep(img, 0, 0, 1, 1, 1)); num = guessNum(all.data.text); }
+    const name = guessName(top.data.text);
+    const q = [name, num ? num.left : ''].filter(Boolean).join(' ');
+    $('scanRead').innerHTML = `Read: <b>${esc(name || '?')}</b> ${num ? '· #' + esc(num.full) : '· no number found'} — fix it in the box if it's wrong and tap Look up.`;
+    $('q').value = q || '';
+    if (q){
+      await search();
+      if (!LAST.length && name && num){ $('q').value = name; await search(); }
+      if (num && LAST.length > 1){ const exact = LAST.filter(c => (c.num || '').replace(/^0+/, '').startsWith(num.left + '/') || (c.num || '').replace(/^0+/, '') === num.left); if (exact.length){ LAST = exact.concat(LAST.filter(c => !exact.includes(c))); drawResults(); } }
+    }
+  }catch(e){ $('scanRead').textContent = 'Couldn\'t read that one. Try again closer with less glare, or type the name.'; }
+  $('camIn').value = '';
+};
+
+/* ---------- share sticker list between phone & PC ---------- */
+$('labCopy').onclick = async () => { const t = 'WPLABELS:' + btoa(unescape(encodeURIComponent(JSON.stringify(LAB))));
+  try{ await navigator.clipboard.writeText(t); alertBox('Copied. Text or email it to yourself, then on the PC tap "Paste a sticker list".'); }
+  catch(e){ $('labTxt').style.display = 'block'; $('labTxt').value = t; $('labTxt').select(); } };
+$('labPaste').onclick = () => { $('labTxt').style.display = 'block'; $('labPasteGo').style.display = 'inline-block'; $('labTxt').value = ''; $('labTxt').focus(); };
+$('labPasteGo').onclick = () => { try{ const t = $('labTxt').value.trim().replace(/^WPLABELS:/, ''); const add = JSON.parse(decodeURIComponent(escape(atob(t))));
+  LAB = LAB.concat(add); save('labels', LAB); drawLab(); badges(); $('labTxt').style.display = 'none'; $('labPasteGo').style.display = 'none'; }
+  catch(e){ $('labInfo').textContent = 'That didn\'t look like a sticker list. Copy it again and paste the whole thing.'; } };
+
+/* ---------- home-screen app ---------- */
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+(function(){ const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  if (standalone || !/Android|iPhone|iPad/i.test(navigator.userAgent)) return;
+  const ios = /iPhone|iPad/i.test(navigator.userAgent);
+  $('installTip').style.display = 'block';
+  $('installTip').innerHTML = ios ? '📲 <b>Make it an app:</b> tap the Share button <b>⬆️</b> at the bottom of Safari, then <b>Add to Home Screen</b>.'
+                                  : '📲 <b>Make it an app:</b> tap the <b>⋮</b> menu at the top right of Chrome, then <b>Add to Home screen</b> (or <b>Install app</b>).'; })();
+
+$('go').onclick = search;
+$('q').addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
+drawPct(); badges();
+if (!KEY){ showMsg('First time? Go to <b>⚙️ Setup</b> and paste your PokéWallet API key.', 'info'); }
+</script>
+</body>
+</html>
