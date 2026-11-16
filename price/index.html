@@ -88,6 +88,8 @@
     .sellp,.buyp{font-size:16px}
     .searchrow input{font-size:18px}
   }
+  .sold{font-size:13px;color:var(--mute);margin:0 0 8px}
+  a.lnk{display:inline-block;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--acc);text-decoration:none;font-weight:600;margin-left:4px}
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:9}
   .modal img{max-height:90vh;max-width:92vw;border-radius:12px}
   /* ---------- Avery 5167 print sheet ---------- */
@@ -314,6 +316,8 @@ function slim(x){
           rar: ci.rarity || '', type: ci.product_type || 'card', vars, url: x.tcgplayer?.url || x.cardmarket?.product_url || ''};
 }
 
+function ebayUrl(c){ const n = c.name.replace(/\s*-\s*\d+\/\d+.*$/, '').replace(/\(.*?\)/g, '').trim();
+  return 'https://www.ebay.com/sch/i.html?_nkw=' + encodeURIComponent([n, c.num, 'pokemon'].filter(Boolean).join(' ')) + '&LH_Sold=1&LH_Complete=1&_sop=13'; }
 function drawResults(){
   const box = $('results');
   if (!LAST.length){ box.style.display = 'none'; return; }
@@ -324,6 +328,7 @@ function drawResults(){
       <div>
         <div class="nm">${esc(c.name)}</div>
         <div class="meta">${esc(c.set)} ${c.num ? '· #' + esc(c.num) : ''} ${c.rar ? '<span class="chip">' + esc(c.rar) + '</span>' : ''}${c.type === 'sealed' ? '<span class="chip">Sealed</span>' : ''}</div>
+        <div class="sold">Recent sales: <a class="lnk" target="_blank" rel="noopener" href="${ebayUrl(c)}">eBay sold ↗</a>${c.url && /tcgplayer/.test(c.url) ? ` <a class="lnk" target="_blank" rel="noopener" href="${esc(c.url)}">TCGplayer ↗</a>` : ''}</div>
         ${c.vars.length ? `<table class="v"><thead><tr><th>Version</th><th>Market</th><th>Sell at</th><th>Buy at ${S.buyPct}%</th><th></th></tr></thead><tbody>
           ${c.vars.map((v, j) => `<tr>
             <td>${esc(v.v)}${v.eur ? ' <span class="chip">€ prices</span>' : ''}</td>
@@ -460,17 +465,48 @@ function prep(img, x0, y0, x1, y1, scale){
   for (let i = 0; i < a.length; i += 4){ let v = 0.3*a[i] + 0.59*a[i+1] + 0.11*a[i+2]; v = (v - 128) * 1.6 + 128; v = v < 0 ? 0 : v > 255 ? 255 : v; a[i] = a[i+1] = a[i+2] = v; }
   g.putImageData(d, 0, 0); return c;
 }
-const SKIP = /^(basic|stage|stage ?[12]|hp|trainer|item|supporter|stadium|energy|pok[eé]mon|tool|evolves|ability|weakness|resistance|retreat|illus|ex|v|vmax|vstar|gx)$/i;
+const SKIP = /^(basic|stage|stage ?[12]|hp|trainer|item|supporter|stadium|energy|pok[eé]mon|tool|evolves|from|ability|weakness|resistance|retreat|illus|ex|v|vmax|vstar|gx)$/i;
+/* find the card inside the photo (it rarely fills the frame) */
+function findCard(img){
+  const full = {x0:0, y0:0, x1:1, y1:1};
+  try{
+    const W = 200, H = Math.max(40, Math.round(200 * img.naturalHeight / img.naturalWidth));
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const g = c.getContext('2d'); g.drawImage(img, 0, 0, W, H);
+    const a = g.getImageData(0, 0, W, H).data, m = Math.max(2, Math.round(W * 0.03));
+    let r = 0, gg = 0, b = 0, n = 0;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++){ if (x < m || y < m || x >= W - m || y >= H - m){ const i = (y*W + x)*4; r += a[i]; gg += a[i+1]; b += a[i+2]; n++; } }
+    r /= n; gg /= n; b /= n;
+    const col = new Array(W).fill(0), row = new Array(H).fill(0);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++){ const i = (y*W + x)*4;
+      if (Math.abs(a[i]-r) + Math.abs(a[i+1]-gg) + Math.abs(a[i+2]-b) > 110){ col[x]++; row[y]++; } }
+    const run = (arr, tot) => { let best = [0, -1], s = -1; for (let i = 0; i <= arr.length; i++){ const on = i < arr.length && arr[i] / tot > 0.3;
+      if (on && s < 0) s = i; if (!on && s >= 0){ if (i - s > best[1] - best[0]) best = [s, i]; s = -1; } } return best; };
+    const cx = run(col, H), cy = run(row, W);
+    const w = cx[1] - cx[0], h = cy[1] - cy[0];
+    if (w < W * 0.25 || h < H * 0.25) return full;
+    const asp = (w / W * img.naturalWidth) / (h / H * img.naturalHeight);
+    if (asp < 0.55 || asp > 0.92) return full;
+    return {x0: cx[0] / W, y0: cy[0] / H, x1: cx[1] / W, y1: cy[1] / H};
+  }catch(e){ return full; }
+}
+function lev(a, b){ const d = []; for (let i = 0; i <= a.length; i++){ d[i] = [i]; } for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+  return d[a.length][b.length]; }
+function nameScore(name, words){ const toks = name.toLowerCase().replace(/[^a-zé' ]/g, ' ').split(/\s+/).filter(t => t.length >= 3 && !SKIP.test(t));
+  let sc = 0; toks.forEach(t => { if (words.some(w => Math.abs(w.length - t.length) <= 2 && lev(w, t) <= Math.floor(t.length / 4))) sc++; }); return toks.length ? sc / toks.length : 0; }
 function guessName(text){
   const lines = text.split('\n').map(l => l.replace(/[^A-Za-z'’é\- ]/g, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean);
-  for (const l of lines.slice(0, 8)){
-    const words = l.split(' ').filter(w => w.length >= 3 && !SKIP.test(w));
-    if (words.length){ let n = words.slice(0, 2).join(' '); if (/\b(ex|EX|GX|V|VMAX|VSTAR)\b/.test(l)) n += ' ' + (l.match(/\b(ex|EX|GX|VMAX|VSTAR|V)\b/)[1]).toLowerCase(); return n; }
+  let best = '';
+  for (const l of lines.slice(0, 6)){
+    const words = l.split(' ').filter(w => w.length >= 4 && !SKIP.test(w));
+    if (words.length){ const n = words.slice(0, 2).join(' '); if (n.length > best.length) best = n; }
   }
-  return '';
+  return best;
 }
 function guessNum(text){
-  const m = text.replace(/[oO]/g, '0').replace(/[lI|]/g, '1').match(/(\d{1,3})\s*[\/]\s*(\d{2,3})/);
+  const t = text.replace(/[oOQ]/g, '0').replace(/[lI|]/g, '1');
+  const m = t.match(/(\d{1,3})\s*\/\s*(\d{2,3})/);
   return m ? {left: String(parseInt(m[1])), full: m[1] + '/' + m[2]} : null;
 }
 $('scanBtn').onclick = () => $('camIn').click();
@@ -482,20 +518,30 @@ $('camIn').onchange = async () => {
     await img.decode();
     const w = await getOCR();
     $('scanRead').textContent = 'Reading the card…';
-    const top = await w.recognize(prep(img, 0, 0, 1, 0.22, 2));
-    $('scanBar').style.width = '0';
-    const bot = await w.recognize(prep(img, 0, 0.82, 1, 1, 3));
-    let num = guessNum(bot.data.text) || guessNum(top.data.text);
-    if (!num){ const all = await w.recognize(prep(img, 0, 0, 1, 1, 1)); num = guessNum(all.data.text); }
-    const name = guessName(top.data.text);
-    const q = [name, num ? num.left : ''].filter(Boolean).join(' ');
-    $('scanRead').innerHTML = `Read: <b>${esc(name || '?')}</b> ${num ? '· #' + esc(num.full) : '· no number found'} — fix it in the box if it's wrong and tap Look up.`;
-    $('q').value = q || '';
-    if (q){
-      await search();
-      if (!LAST.length && name && num){ $('q').value = name; await search(); }
-      if (num && LAST.length > 1){ const exact = LAST.filter(c => (c.num || '').replace(/^0+/, '').startsWith(num.left + '/') || (c.num || '').replace(/^0+/, '') === num.left); if (exact.length){ LAST = exact.concat(LAST.filter(c => !exact.includes(c))); drawResults(); } }
+    const k = findCard(img), cw = k.x1 - k.x0, ch = k.y1 - k.y0;
+    const R = (fx0, fy0, fx1, fy1, sc) => prep(img, k.x0 + cw*fx0, k.y0 + ch*fy0, k.x0 + cw*fx1, k.y0 + ch*fy1, sc);
+    const top = (await w.recognize(R(0, 0, 1, 0.13, 4))).data.text;
+    let num = null, botText = '';
+    for (const reg of [[0, 0.88, 0.6, 1, 8], [0, 0.84, 1, 1, 5], [0.4, 0.88, 1, 1, 8]]){ const t = (await w.recognize(R(...reg))).data.text; botText += '\n' + t; num = guessNum(t); if (num) break; }
+    const whole = (await w.recognize(R(0, 0, 1, 1, 3))).data.text;
+    if (!num) num = guessNum(whole);
+    const words = (top + ' ' + whole).toLowerCase().replace(/[^a-zé' ]/g, ' ').split(/\s+/).filter(x => x.length >= 3);
+    let name = guessName(top), picked = false;
+    if (num){
+      $('q').value = num.full; await search();
+      if (LAST.length){
+        const ranked = LAST.map(c => ({c, s: nameScore(c.name.replace(/\s*-\s*\d+\/\d+.*$/, ''), words)})).sort((p, q) => q.s - p.s);
+        LAST = ranked.map(x => x.c); drawResults();
+        if (ranked[0].s >= 0.5){ picked = true; name = ranked[0].c.name.replace(/\s*-\s*\d+\/\d+.*$/, ''); }
+        $('scanRead').innerHTML = picked ? `Found it: <b>${esc(name)}</b> · #${esc(num.full)}` : `Read number <b>#${esc(num.full)}</b>. Pick your card from the list below.`;
+        $('camIn').value = ''; return;
+      }
     }
+    $('q').value = [name, num ? num.left : ''].filter(Boolean).join(' ');
+    if ($('q').value) await search();
+    if (!LAST.length && name && num){ $('q').value = name; await search(); }
+    $('scanRead').innerHTML = LAST.length ? `Read: <b>${esc(name || '?')}</b>${num ? ' · #' + esc(num.full) : ''}. Check it's the right card.`
+      : `Couldn't read this one clearly${name ? ' (got "' + esc(name) + '")' : ''}. Type the name or the number at the bottom of the card (like <b>029/163</b>) and tap Look up.`;
   }catch(e){ $('scanRead').textContent = 'Couldn\'t read that one. Try again closer with less glare, or type the name.'; }
   $('camIn').value = '';
 };
