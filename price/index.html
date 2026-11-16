@@ -227,6 +227,9 @@ function save(k, v){ try{ localStorage.setItem(LS(k), JSON.stringify(v)); }catch
 
 let S = load('settings', {floor:0.25, markup:0, pcts:[50,60,70,80], buyPct:60});
 let KEY = load('key', '');
+/* one-tap setup link: .../price/#setup-pk_xxx saves the key on this device, then wipes it from the address bar */
+(function(){ const m = location.hash.match(/^#setup-(pk_(?:live|test)_[A-Za-z0-9]+)$/);
+  if (m){ KEY = m[1]; save('key', KEY); try{ history.replaceState(null, '', location.pathname + location.search); }catch(e){} window.__keySetByLink = true; } })();
 let BUY = load('buy', []);
 let LAB = load('labels', []);
 let CACHE = load('cache', {});
@@ -518,7 +521,8 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
 $('go').onclick = search;
 $('q').addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
 drawPct(); badges();
-if (!KEY){ showMsg('First time? Go to <b>⚙️ Setup</b> and paste your PokéWallet API key.', 'info'); }
+if (window.__keySetByLink){ showMsg('✓ Your PokéWallet key is saved on this phone. Tap 📷 Scan a card to try it.', 'ok'); }
+else if (!KEY){ showMsg('First time? Go to <b>⚙️ Setup</b> and paste your PokéWallet API key.', 'info'); }
 </script>
 </body>
 </html>
